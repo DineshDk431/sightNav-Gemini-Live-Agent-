@@ -1,0 +1,10 @@
+# SightNav — .gitignore
+.env
+__pycache__/
+*.pyc
+data/screenshots/
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
