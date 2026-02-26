@@ -1,102 +1,135 @@
 """
 SightNav — Executor Tool
 ========================
-Interprets the JSON output from the Vision agent and executes the safe
-keyboard and mouse actions via PyAutoGUI.
+Interprets the JSON Multi-Step Array from the Vision agent and 
+executes actions safely.
+
+Includes Windows API Native DPI Scaling auto-calculations.
 """
 
 import time
 import pyautogui
+import platform
 from src.utils.logger import Logger
 
 # Global safety settings
-pyautogui.FAILSAFE = True  # Moving mouse to a corner aborts the program
-pyautogui.PAUSE = 0.5      # 0.5s pause after every PyAutoGUI call
+pyautogui.FAILSAFE = True  
+pyautogui.PAUSE = 0.5      
+
+# Cache scaling factor so we don't query the OS every click
+_scale_factor = None
+
+def get_windows_scaling():
+    global _scale_factor
+    if _scale_factor is not None:
+        return _scale_factor
+        
+    if platform.system() == "Windows":
+        try:
+            import ctypes
+            # Get physical DPI of primary monitor
+            hDC = ctypes.windll.user32.GetDC(0)
+            dpi = ctypes.windll.gdi32.GetDeviceCaps(hDC, 88) # LOGPIXELSX = 88
+            ctypes.windll.user32.ReleaseDC(0, hDC)
+            # Standard DPI is 96 (which is 100%)
+            _scale_factor = dpi / 96.0
+            Logger.info(f"Windows Desktop scaling detected: {int(_scale_factor * 100)}%")
+            return _scale_factor
+        except Exception as e:
+            Logger.warn(f"Failed to detect Windows scaling: {e}. Assuming 100%.")
+            _scale_factor = 1.0
+            return 1.0
+    
+    # Mac/Linux default to 1.0 for now
+    _scale_factor = 1.0
+    return 1.0
 
 
-def execute_action(action_data: dict) -> bool:
+def execute_plan(plan_array: list) -> bool:
     """
-    Executes a parsed JSON action from the Vision Agent.
+    Executes an array of actions.
     
-    Format expected:
-    {
-        "action": "click" | "type" | "scroll" | "wait",
-        "x": int (optional),
-        "y": int (optional),
-        "text": str (optional),
-        "clicks": int (optional, default 1),
-        "amount": int (optional, for scrolling)
-    }
-    
-    Returns:
-        bool: True if execution succeeded, False otherwise
+    Example format expected:
+    [
+      { "action": "click", "x": 500, "y": 600, "clicks": 1 }
+    ]
     """
+    if not plan_array:
+        Logger.error("Empty execution plan received.")
+        return False
+        
+    scale = get_windows_scaling()
+    success_count = 0
+
     try:
-        action_type = action_data.get("action", "").lower()
-        Logger.action(f"Executing: {action_data}")
+        for step_num, action_data in enumerate(plan_array, 1):
+            action_type = action_data.get("action", "").lower()
+            Logger.action(f"Step {step_num}/{len(plan_array)} Executing: {action_type}")
 
-        if not action_type:
-            Logger.error("Action dictionary missing 'action' key.")
-            return False
+            if not action_type:
+                continue
 
-        # 1. CLICK
-        if action_type == "click":
-            x = action_data.get("x")
-            y = action_data.get("y")
-            clicks = action_data.get("clicks", 1)
-            
-            if x is None or y is None:
-                Logger.error("Click action requires 'x' and 'y' coordinates.")
-                return False
+            # 1. CLICK
+            if action_type == "click":
+                raw_x = action_data.get("x")
+                raw_y = action_data.get("y")
+                clicks = action_data.get("clicks", 1)
                 
-            # PyAutoGUI handles the movement automatically in click() if x and y are provided
-            # A 0.5s movement duration as per instructions makes it look human
-            pyautogui.moveTo(x, y, duration=0.5)
-            pyautogui.click(clicks=clicks)
-            Logger.success(f"Clicked at ({x}, {y})")
-
-        # 2. TYPE
-        elif action_type == "type":
-            text = action_data.get("text")
-            if not text:
-                Logger.error("Type action requires 'text'.")
-                return False
+                if raw_x is None or raw_y is None:
+                    Logger.error("Click missing coordinates.")
+                    continue
+                    
+                # APPLY WINDOWS DOT-PITCH SCALING FIX
+                x = int(raw_x / scale)
+                y = int(raw_y / scale)
                 
-            # Optional: Move & click before typing if coords are provided
-            x = action_data.get("x")
-            y = action_data.get("y")
-            if x is not None and y is not None:
                 pyautogui.moveTo(x, y, duration=0.5)
-                pyautogui.click()
-                time.sleep(0.2)
+                pyautogui.click(clicks=clicks)
+                Logger.success(f"Clicked at OS coords ({x}, {y}) [Scaled from raw {raw_x}, {raw_y}]")
+                success_count += 1
+
+            # 2. TYPE
+            elif action_type == "type":
+                text = action_data.get("text")
+                if not text:
+                    continue
+                    
+                raw_x = action_data.get("x")
+                raw_y = action_data.get("y")
                 
-            pyautogui.write(text, interval=0.05)
-            # Standard behaviour is to press enter after typing in forms
-            if action_data.get("press_enter", True):
-                pyautogui.press("enter")
-            Logger.success(f"Typed text: '{text}'")
+                if raw_x is not None and raw_y is not None:
+                    x = int(raw_x / scale)
+                    y = int(raw_y / scale)
+                    pyautogui.moveTo(x, y, duration=0.5)
+                    pyautogui.click()
+                    time.sleep(0.2)
+                    
+                pyautogui.write(text, interval=0.05)
+                if action_data.get("press_enter", True):
+                    pyautogui.press("enter")
+                Logger.success(f"Typed text: '{text}'")
+                success_count += 1
 
-        # 3. SCROLL
-        elif action_type == "scroll":
-            amount = action_data.get("amount", -500) # Negative often means scroll down
-            pyautogui.scroll(amount)
-            Logger.success(f"Scrolled by {amount}")
+            # 3. SCROLL
+            elif action_type == "scroll":
+                amount = action_data.get("amount", -500) 
+                pyautogui.scroll(amount)
+                Logger.success(f"Scrolled by {amount}")
+                success_count += 1
 
-        # 4. WAIT
-        elif action_type == "wait":
-            duration = action_data.get("duration", 2.0)
-            Logger.info(f"Waiting for {duration} seconds...")
-            time.sleep(duration)
-
-        else:
-            Logger.error(f"Unknown action type: {action_type}")
-            return False
-
-        return True
+            # 4. WAIT
+            elif action_type == "wait":
+                duration = action_data.get("duration", 2.0)
+                Logger.info(f"Waiting for {duration} seconds...")
+                time.sleep(duration)
+                success_count += 1
+                
+        # If we executed at least one step successfully, return True
+        return success_count > 0
 
     except pyautogui.FailSafeException:
         Logger.error("FailSafe triggered! Mouse was moved to a screen corner.")
         return False
     except Exception as e:
-        Logger.error(f"Execution failed: {e}")
+        Logger.error(f"Execution failed on step {step_num}: {e}")
         return False
