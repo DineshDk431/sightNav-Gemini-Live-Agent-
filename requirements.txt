@@ -8,7 +8,7 @@ Pillow>=10.0.0
 opencv-python>=4.8.0
 
 # Audio I/O for Gemini Live voice streaming
-PyAudio>=0.2.14
+#PyAudio>=0.2.14
 
 # Environment variable management
 python-dotenv>=1.0.0
