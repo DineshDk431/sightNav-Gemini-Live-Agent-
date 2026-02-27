@@ -1,12 +1,3 @@
-"""
-SightNav — Vision Agent (Tri-Reasoning V3)
-===========================================
-Upgraded to the Triple-Check Consensus Protocol.
-Forces the model to act as a Proposer (R1), Critic (R2),
-and Judge (R3) before outputting the final 
-Array of Actions to reduce zero-shot hallucinations.
-"""
-
 import os
 import json
 from google import genai
@@ -48,10 +39,6 @@ TRIPLE-CHECK SCHEMA:
 Before answering, review the "Long Term Memory Rules". If a rule exists, adhere to it over your own logic."""
 
     def analyze_screen(self, base64_image: str, coordinate_map: dict, user_intent: str, memory_rules: list) -> list:
-        """
-        Sends the SoM image to Gemini.
-        Parses the JSON Tri-Reasoning response and resolves IDs.
-        """
         Logger.agent("Vision", f"Analyzing intent via Triple-Check Consensus: '{user_intent}'")
         
         try:
