@@ -1,11 +1,8 @@
 """
-SightNav — Streamlit Dashboard (V2)
+SightNav — Streamlit Dashboard (V3)
 ===================================
-Replaces main.py. Provides a sleek local web interface for the 
-SightNav Agentic loop. Displays live annotated screenshots,
-logs, and user controls.
-
-Run with: streamlit run app.py
+Incorporates the Security Gatekeeper (SafetyAgent) and 
+the Tri-Reasoning Consensus (VisionAgent) into the UI loop.
 """
 
 import os
@@ -18,6 +15,8 @@ from src.tools.screen_capture import capture_screen
 from src.tools.executor import execute_plan
 from src.agents.vision_agent import VisionAgent
 from src.agents.reflection_agent import ReflectionAgent
+from src.agents.safety_agent import SafetyAgent
+from src.agents.audio_agent import AudioAgent
 from src.utils.vision_utils import apply_set_of_mark, draw_target_circle
 from src.utils.memory_manager import MemoryManager
 
@@ -29,12 +28,13 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for dark mode hacking
 st.markdown("""
 <style>
     .stApp { background-color: #0E1117; }
     .status-online { color: #00FF00; font-weight: bold; }
     .status-offline { color: #FF0000; font-weight: bold; }
+    .risk-high { color: #FF0000; font-weight: bold; }
+    .risk-medium { color: #FFA500; font-weight: bold; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -48,9 +48,7 @@ if 'latest_image' not in st.session_state:
 if 'system_initialized' not in st.session_state:
     st.session_state.system_initialized = False
 
-# --- Helper functions ---
 def log_ui(msg: str):
-    """Pushes a log to the UI list and print"""
     timestamp = time.strftime("%H:%M:%S")
     st.session_state.logs.insert(0, f"[{timestamp}] {msg}")
     Logger.info(msg)
@@ -58,28 +56,28 @@ def log_ui(msg: str):
 @st.cache_resource
 def init_system():
     load_dotenv()
-    log_ui("Initializing Agent subsystems...")
+    log_ui("Initializing Advanced Cognitive Subsystems...")
     vision = VisionAgent()
     reflection = ReflectionAgent()
+    safety = SafetyAgent()
     memory = MemoryManager()
-    log_ui("Subsystems Online.")
-    return vision, reflection, memory
+    audio = AudioAgent()
+    log_ui("Gatekeeper, Tri-Reasoning, and Subsystems Online.")
+    return vision, reflection, safety, memory, audio
 
 # --- Main UI Build ---
 def main():
-    st.title("👁️ SightNav Agent Control Center")
-    st.caption("A locally-hosted multimodal UI navigation system. Powered by Gemini 2.5 Flash & OpenCV.")
+    st.title("👁️ SightNav Agent Control Center V3")
+    st.caption("Powered by Gemini 2.5 Flash, OpenCV Set-of-Mark, and Tri-Reasoning Validation.")
 
-    # Initialize Core singletons
     try:
-        vision, reflection, memory = init_system()
+        vision, reflection, safety, memory, audio = init_system()
         if not st.session_state.system_initialized:
             st.session_state.system_initialized = True
     except Exception as e:
         st.error(f"Failed to boot logic: {e}")
         st.stop()
 
-    # -- Sidebar --
     with st.sidebar:
         st.header("🎛️ Controls")
         
@@ -97,23 +95,32 @@ def main():
                 else:
                     st.warning("Please enter a command.")
         with col2:
-            if st.button("🛑 Stop", use_container_width=True):
-                st.session_state.agent_running = False
-                log_ui("User halted execution loop.")
+            if st.button("🎙️ Voice Cmd", use_container_width=True):
+                # Using the Audio Agent's mic
+                st.session_state.agent_running = True
+                intent_from_mic = audio.listen()
+                if intent_from_mic:
+                    user_intent = intent_from_mic
+                    # Hack to update text input visually in Streamlit (requires rerun in complex apps, but works in session state)
+                else:
+                    st.session_state.agent_running = False
+                    
+        if st.button("🛑 Halt System", use_container_width=True):
+            st.session_state.agent_running = False
+            log_ui("User halted execution loop.")
 
         st.divider()
         st.subheader("🧠 Semantic Memory")
         st.metric(label="Learned Rules", value=len(memory.rules))
         if st.button("Clear Memory"):
             reflection._save_memory([])
-            memory._load_memory() # Refresh FAISS
+            memory._load_memory()
             log_ui("Cleared all memory rules.")
 
-    # -- Main Content --
     col_left, col_right = st.columns([2, 1])
 
     with col_left:
-        st.subheader("Agent's Vision (Set-of-Mark Overlay)")
+        st.subheader("Agent's Vision (SoM Bounding Boxes)")
         image_placeholder = st.empty()
         if st.session_state.latest_image:
             image_placeholder.image(st.session_state.latest_image, use_container_width=True)
@@ -121,51 +128,86 @@ def main():
             image_placeholder.info("Agent is idle. Awaiting command.")
 
     with col_right:
-        st.subheader("Action Logs")
-        log_container = st.container(height=500)
+        st.subheader("Action Logs (Reasoning Monologue)")
+        log_container = st.container(height=600)
         with log_container:
             for log in st.session_state.logs:
-                st.code(log, language=None)
+                # Basic color coding for UI depending on text
+                if "❌ Blocked" in log:
+                    st.markdown(f"<span class='risk-high'>`{log}`</span>", unsafe_allow_html=True)
+                elif "HITL" in log or "[Critic]" in log:
+                    st.markdown(f"<span class='risk-medium'>`{log}`</span>", unsafe_allow_html=True)
+                else:
+                    st.code(log, language=None)
 
     # --- Agentic Execution Logic Loop ---
     if st.session_state.agent_running and user_intent:
         log_ui(f"USER: '{user_intent}'")
         
-        # 1. Capture screen & apply Set-of-Mark
+        # 0. SECURITY GATEKEEPER
+        log_ui("Evaluating intent via Safety Gatekeeper...")
+        safety_check = safety.check_intent(user_intent)
+        
+        if not safety_check.get("is_safe", False):
+            risk = safety_check.get("risk_level", "unknown")
+            reason = safety_check.get("violation_reason", "Action deemed unsafe.")
+            
+            if risk == "high":
+                log_ui(f"❌ Blocked (HIGH RISK): {reason}")
+                audio.speak("I cannot do that. The action violates security protocols.")
+                st.session_state.agent_running = False
+                st.rerun()
+                
+            elif risk == "medium":
+                log_ui(f"⚠️ Security Hold (HITL): {reason}")
+                audio.speak("This action requires confirmation. Please say 'Confirm' to proceed, or 'Cancel'.")
+                
+                # Wait for user confirmation voice
+                confirmation = audio.listen()
+                if not confirmation or "confirm" not in confirmation.lower() and "yes" not in confirmation.lower():
+                    log_ui("❌ User cancelled or failed to confirm HITL action.")
+                    audio.speak("Action cancelled.")
+                    st.session_state.agent_running = False
+                    st.rerun()
+                else:
+                    log_ui("✅ User Authorized Medium Risk Action.")
+        
+        # 1. Perception
         log_ui("Capturing screen and routing to OpenCV Set-of-Mark...")
         raw_b64, file_path = capture_screen(save_debug=True)
-        
         img_b64, coord_map = apply_set_of_mark(file_path)
+        
         st.session_state.latest_image = file_path 
         
-        # 2. Get Rules via FAISS
+        # 2. Memory RAG
         rules = memory.query_top_k(user_intent, k=5)
-        if rules:
-            log_ui(f"Semantic RAG retrieved {len(rules)} relevant rules.")
         
-        # 3. Vision API
-        log_ui("Requesting Action Plan [Array] from Gemini 2.5 Flash...")
+        # 3. Triple-Check Consensus Vision
+        log_ui("Engaging Triple-Check Reasoning Consensus...")
         action_plan = vision.analyze_screen(img_b64, coord_map, user_intent, rules)
         
         if not action_plan:
-            log_ui("ERROR: Gemini failed to generate a plan.")
+            log_ui("ERROR: Judge Consensus failed to generate a plan.")
+            audio.speak("I'm confused by the screen and decided it's safer to stop.")
             st.session_state.agent_running = False
             st.rerun()
 
-        log_ui(f"Plan received with {len(action_plan)} steps. Engaging PyAutoGUI Executor.")
+        log_ui(f"Consensus Reached. Executing {len(action_plan)} steps via native Windows API.")
         
         first_step = action_plan[0] if action_plan else None
         if first_step and "x" in first_step:
             target_img_path = draw_target_circle(file_path, first_step['x'], first_step['y'])
             st.session_state.latest_image = target_img_path
         
-        # 4. Execute Native
+        # 4. Action
         success = execute_plan(action_plan)
-        
         if success:
-            log_ui("SUCCESS: Action executed safely.")
+            log_ui("SUCCESS: Array Routine executed safely.")
+            audio.speak("Action complete.")
         else:
-            log_ui("FAIL: Execution encountered an error.")
+            log_ui("FAIL: Execution encountered OS errors.")
+            audio.speak("Something went wrong with the mouse automation.")
+            
         st.session_state.agent_running = False
         st.rerun()
 
