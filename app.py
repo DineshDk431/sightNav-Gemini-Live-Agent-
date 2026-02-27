@@ -1,10 +1,3 @@
-"""
-SightNav — Streamlit Dashboard (V3)
-===================================
-Incorporates the Security Gatekeeper (SafetyAgent) and 
-the Tri-Reasoning Consensus (VisionAgent) into the UI loop.
-"""
-
 import os
 import time
 import streamlit as st
@@ -20,7 +13,6 @@ from src.agents.audio_agent import AudioAgent
 from src.utils.vision_utils import apply_set_of_mark, draw_target_circle
 from src.utils.memory_manager import MemoryManager
 
-# --- Streamlit Page Config ---
 st.set_page_config(
     page_title="SightNav AI",
     page_icon="🤖",
