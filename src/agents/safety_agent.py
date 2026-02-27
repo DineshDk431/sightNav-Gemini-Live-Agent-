@@ -1,11 +1,3 @@
-"""
-SightNav — Security Gatekeeper (Safety Agent)
-==============================================
-Acts as a pre-computation bouncer. Intercepts the user's intent 
-before any screenshots or tool calls happen. Guards against 
-malicious actions and flags medium-risk activities for HITL approval.
-"""
-
 import json
 from google import genai
 from google.genai import types
@@ -14,8 +6,7 @@ from src.utils.logger import Logger
 class SafetyAgent:
     def __init__(self):
         self.client = genai.Client()
-        # Text-only fast model for pre-processing
-        self.model_name = "gemini-2.5-flash"
+        self.model_name = "gemini-2.5-pro"
         
         self.system_instruction = """You are the Security Gatekeeper for an Autonomous Computer Control Agent.
 The user is about to give a command that will be executed on their local desktop.
