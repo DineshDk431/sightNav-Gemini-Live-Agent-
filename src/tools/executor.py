@@ -1,22 +1,11 @@
-"""
-SightNav — Executor Tool
-========================
-Interprets the JSON Multi-Step Array from the Vision agent and 
-executes actions safely.
-
-Includes Windows API Native DPI Scaling auto-calculations.
-"""
-
 import time
 import pyautogui
 import platform
 from src.utils.logger import Logger
 
-# Global safety settings
 pyautogui.FAILSAFE = True  
 pyautogui.PAUSE = 0.5      
 
-# Cache scaling factor so we don't query the OS every click
 _scale_factor = None
 
 def get_windows_scaling():
@@ -39,8 +28,6 @@ def get_windows_scaling():
             Logger.warn(f"Failed to detect Windows scaling: {e}. Assuming 100%.")
             _scale_factor = 1.0
             return 1.0
-    
-    # Mac/Linux default to 1.0 for now
     _scale_factor = 1.0
     return 1.0
 
