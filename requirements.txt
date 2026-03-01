@@ -1,26 +1,10 @@
-# ============================================
-# SightNav — Dependencies
-# ============================================
-# Google Gemini SDK (Multimodal + Live API)
 google-genai>=1.0.0
-
-# Screen automation & Display Scaling
 pyautogui>=0.9.54
-
-# Image processing & Computer Vision
 Pillow>=10.0.0
 opencv-python>=4.8.0
 numpy>=1.24.0
-
-# Audio I/O for Gemini Live voice streaming
 PyAudio>=0.2.14
-
-# Environment variable management
 python-dotenv>=1.0.0
-
-# Phase 5: Streamlit Dashboard UI
 streamlit>=1.30.0
-
-# Phase 5: Semantic RAM (RAG Memory)
 faiss-cpu>=1.7.4
 sentence-transformers>=2.2.2
