@@ -34,8 +34,6 @@ def get_windows_scaling():
 
 def execute_plan(plan_array: list) -> bool:
     """
-    Executes an array of actions.
-    
     Example format expected:
     [
       { "action": "click", "x": 500, "y": 600, "clicks": 1 }
