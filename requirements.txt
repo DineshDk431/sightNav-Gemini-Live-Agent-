@@ -1,10 +1,33 @@
 google-genai>=1.0.0
+
+# Screen automation & Display Scaling
 pyautogui>=0.9.54
+
+# Image processing & Computer Vision
 Pillow>=10.0.0
 opencv-python>=4.8.0
 numpy>=1.24.0
 PyAudio>=0.2.14
+
+# Environment variable management
 python-dotenv>=1.0.0
 streamlit>=1.30.0
 faiss-cpu>=1.7.4
 sentence-transformers>=2.2.2
+
+# Phase 6: Enterprise Voice Pipeline (Local Whisper + VAD)
+faster-whisper>=1.0.0
+webrtcvad>=2.0.10
+
+# Phase 7: Advanced Audio Processing
+librosa>=0.9.2
+pydub>=0.25.1
+
+# Phase 8: Real-time Audio Capture
+sounddevice>=0.4.6
+
+# Phase 9: Windows Audio Capture (Critical for Gemini Live)
+comtypes>=1.2.0
+
+# Phase 10: Gemini Live Voice Streaming (Native Windows Audio)
+pywinrt>=1.0.0

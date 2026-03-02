@@ -24,9 +24,6 @@ CRITICAL RULES:
 
 TRIPLE-CHECK SCHEMA:
 {
-    "reasoning_1": "Act as the Proposer. Scan the UI top-to-bottom. Where is the most logical target and what is its ID?",
-    "reasoning_2": "Act as the Critic. Be highly skeptical of R1. Is that button actually disabled? Is there a better target? Does the text exactly match?",
-    "reasoning_3": "Act as the Judge. Compare R1 and R2. If they disagree, choose the safest path. Finalize the exact logical sequence of clicks.",
     "final_action_plan": [
         {
             "action": "click" | "type" | "scroll" | "wait",
@@ -36,7 +33,7 @@ TRIPLE-CHECK SCHEMA:
     ]
 }
 
-Before answering, review the "Long Term Memory Rules". If a rule exists, adhere to it over your own logic."""
+Before answering, review the "Long Term Memory Rules". If a rule exists, adhere to it over your own logic. Do not output any reasoning text, only output the final JSON array."""
 
     def analyze_screen(self, base64_image: str, coordinate_map: dict, user_intent: str, memory_rules: list) -> list:
         Logger.agent("Vision", f"Analyzing intent via Triple-Check Consensus: '{user_intent}'")
@@ -67,14 +64,16 @@ Evaluate the annotated screenshot using the Triple-Check Schema and output the J
             )
 
             response_text = response.text.strip()
+            if response_text.startswith("```json"):
+                response_text = response_text[7:]
+            elif response_text.startswith("```"):
+                response_text = response_text[3:]
+            if response_text.endswith("```"):
+                response_text = response_text[:-3]
+            response_text = response_text.strip()
             
             try:
                 result = json.loads(response_text)
-                
-                # Expose the cognitive reasoning to the Logger/UI so users can read the internal debate
-                Logger.info(f"[Proposer] {result.get('reasoning_1', '...')}")
-                Logger.warn(f"[Critic]   {result.get('reasoning_2', '...')}")
-                Logger.success(f"[Judge]    {result.get('reasoning_3', '...')}")
                 
                 action_plan = result.get("final_action_plan", [])
                 

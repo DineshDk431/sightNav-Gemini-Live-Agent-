@@ -3,10 +3,11 @@ from dotenv import load_dotenv
 
 from src.utils.logger import Logger
 from src.tools.screen_capture import capture_screen
-from src.tools.executor import execute_action
+from src.tools.executor import execute_plan
 from src.agents.vision_agent import VisionAgent
 from src.agents.reflection_agent import ReflectionAgent
 from src.agents.audio_agent import AudioAgent
+from src.utils.vision_utils import apply_set_of_mark
 
 def main():
     # 1. Environment Init
@@ -45,21 +46,23 @@ def main():
         if not before_path:
             audio.speak("Error capturing the screen. Retrying...")
             continue
+            
+        img_b64, coord_map = apply_set_of_mark(before_path)
 
         # Step 3 (Plan & Route): Get rules and analyze
         rules = reflection.get_rules()
         if rules:
             Logger.memory(f"Loaded {len(rules)} rules.")
             
-        action_plan = vision.analyze_screen(image_path=before_path, user_intent=intent, memory_rules=rules)
+        action_plan = vision.analyze_screen(img_b64, coord_map, intent, rules)
         
-        if not action_plan or "action" not in action_plan:
+        if not action_plan or "action" not in action_plan[0]:
             Logger.warn("Vision Agent could not generate a valid plan.")
             audio.speak("I couldn't figure out how to do that.")
             continue
 
         # Step 4 (Act): Execute
-        success = execute_action(action_plan)
+        success = execute_plan(action_plan)
         
         if not success:
             audio.speak("I encountered an error executing the action.")
