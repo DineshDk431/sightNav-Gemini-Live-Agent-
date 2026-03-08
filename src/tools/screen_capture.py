@@ -1,11 +1,3 @@
-"""
-SightNav — Screen Capture Tool
-==============================
-Captures the primary monitor and converts it into a Base64 encoded PNG 
-string to be sent to the Gemini Vision API.
-Also saves debug copies to `data/screenshots/` for the Reflection Agent.
-"""
-
 import os
 import base64
 import time
@@ -13,20 +5,10 @@ from io import BytesIO
 from PIL import ImageGrab
 from src.utils.logger import Logger
 
-# Ensure screenshots directory exists
 SCREENSHOTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data', 'screenshots')
 os.makedirs(SCREENSHOTS_DIR, exist_ok=True)
 
 def capture_screen(save_debug: bool = True) -> tuple[str, str]:
-    """
-    Captures the primary screen.
-    
-    Args:
-        save_debug: If True, saves a PNG file to data/screenshots/
-        
-    Returns:
-        tuple[str, str]: (base64_encoded_png_string, file_path_if_saved)
-    """
     try:
         # Capture current screen
         Logger.info("Capturing primary screen...")
