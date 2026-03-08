@@ -1,11 +1,3 @@
-"""
-SightNav — Reflection Agent
-===========================
-When an action fails, this agent compares the 'before' and 'after' 
-screenshots to deduce what went wrong and extracts a universal rule 
-to append to the Long Term Memory.
-"""
-
 import os
 import json
 from google import genai
