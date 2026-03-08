@@ -63,8 +63,6 @@ def execute_plan(plan_array: list) -> bool:
                 if raw_x is None or raw_y is None:
                     Logger.error("Click missing coordinates.")
                     continue
-                    
-                # APPLY WINDOWS DOT-PITCH SCALING FIX
                 x = int(raw_x / scale)
                 y = int(raw_y / scale)
                 
@@ -108,8 +106,6 @@ def execute_plan(plan_array: list) -> bool:
                 Logger.info(f"Waiting for {duration} seconds...")
                 time.sleep(duration)
                 success_count += 1
-                
-        # If we executed at least one step successfully, return True
         return success_count > 0
 
     except pyautogui.FailSafeException:
